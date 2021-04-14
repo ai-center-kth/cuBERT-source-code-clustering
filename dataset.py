@@ -19,29 +19,28 @@ class TripletDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
 
         anchor_row = self.dataset.iloc[index]
-
-        anchor, anchor_label = anchor_row.method, anchor_row.label
+        anchor_sample = {"method": anchor_row.method, "method_name": anchor_row.method_name, "label": anchor_row.label}
 
         # Randomly choose a positive sample
         positive_index = index
         while positive_index == index:
             positive_index = np.random.choice(
-                self.label_to_indices[anchor_label])
+                self.label_to_indices[anchor_sample['label']])
 
         positive_row = self.dataset.iloc[positive_index]
-        positive = positive_row.method
+        positive_sample = {"method": positive_row.method, "method_name": positive_row.method_name, "label": positive_row.label}
 
         # Randomly choose a negative sample
         negative_label = np.random.choice(
-            list(self.labels_set - set([anchor_label])))
+            list(self.labels_set - set([anchor_sample['label']])))
         
         negative_index = np.random.choice(
             self.label_to_indices[negative_label])
         
         negative_row = self.dataset.iloc[negative_index]
-        negative = negative_row.method
+        negative_sample = {"method": negative_row.method, "method_name": negative_row.method_name, "label": negative_row.label}
 
-        return (anchor, positive, negative)
+        return (anchor_sample, positive_sample, negative_sample)
 
     def __len__(self):
         return len(self.dataset)
