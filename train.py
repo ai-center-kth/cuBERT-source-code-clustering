@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sklearn.metrics.pairwise import paired_cosine_distances
+from sklearn.metrics.pairwise import paired_cosine_distances, euclidean_distances
 
 from tqdm import tqdm
 from matplotlib import ticker
@@ -36,11 +36,13 @@ def train(epochs, lr=2e-5):
     # Define optimizer and loss function
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2)
-    loss_fn = torch.nn.TripletMarginLoss(margin=1.0, p=2).to(config.DEVICE)
+    loss_fn = torch.nn.TripletMarginWithDistanceLoss(distance_function=lambda x, y: 1.0 - torch.nn.functional.cosine_similarity(x, y))
     
     history = {'loss': {'eval': list(), 'train': list()},
                'positive_similarity': {'eval': list(), 'train': list()},
-               'negative_similarity': {'eval': list(), 'train': list()}
+               'negative_similarity': {'eval': list(), 'train': list()},
+               'positive_euclidean_distance': {'eval': list(), 'train': list()},
+               'negative_euclidean_distance': {'eval': list(), 'train': list()},
     }
     
     logging.info(f'Training model on {config.DEVICE}')
@@ -52,7 +54,7 @@ def train(epochs, lr=2e-5):
 def train_epoch(model, tokenizer, optimizer, scheduler, loss_fn, history, train_dataloader, val_dataloader, epoch_idx):
 
     model.train()
-    total_loss, total_positive_similarity, total_negative_similarity, data_cnt = 0, 0, 0, 0
+    total_loss, total_positive_similarity, total_negative_similarity, total_positive_euclidean_distance, total_negative_euclidean_distance, data_cnt = 0, 0, 0, 0, 0, 0
     
     for batch_idx, (anchor, positive, negative) in tqdm(enumerate(train_dataloader, 1),
                                                         desc=f"Training on epoch {epoch_idx}/{config.EPOCHS}",
@@ -96,30 +98,42 @@ def train_epoch(model, tokenizer, optimizer, scheduler, loss_fn, history, train_
                                                                   positive_rep.detach().to('cpu').numpy()))
         negative_cosine_similarity = 1 - (paired_cosine_distances(anchor_rep.detach().to('cpu').numpy(),
                                                                   negative_rep.detach().to('cpu').numpy()))
+        
+        positive_euclidean_distance = euclidean_distances(anchor_rep.detach().to('cpu').numpy(),
+                                                                  positive_rep.detach().to('cpu').numpy())
+        negative_euclidean_distance = euclidean_distances(anchor_rep.detach().to('cpu').numpy(),
+                                                                  negative_rep.detach().to('cpu').numpy())
+        
         data_cnt += batch_count
         total_loss += loss.item() * batch_count
         total_positive_similarity += np.sum(positive_cosine_similarity)
         total_negative_similarity += np.sum(negative_cosine_similarity)
-
+        total_positive_euclidean_distance += np.sum(positive_euclidean_distance)
+        total_negative_euclidean_distance += np.sum(negative_euclidean_distance)
+        
         # Update weights
         loss.backward()
         optimizer.step()
 
         if batch_idx % config.NUM_BATCHES_TO_LOG == 0 or batch_idx == train_dataloader.__len__():
-            logging.info(f'[epoch {epoch_idx} - batch {batch_idx} - train] loss: {total_loss / data_cnt} positive similarity: {total_positive_similarity / data_cnt} negative similarity: {total_negative_similarity / data_cnt}')
+            logging.info(f'[epoch {epoch_idx} - batch {batch_idx} - train] loss: {total_loss / data_cnt} positive similarity: {total_positive_similarity / data_cnt} negative similarity: {total_negative_similarity / data_cnt} positive euclidean distance: {total_positive_euclidean_distance / data_cnt} negative euclidean distance: {total_negative_euclidean_distance / data_cnt}')
         
         if (batch_idx % config.NUM_BATCHES_UNTIL_EVAL == 0 or batch_idx == train_dataloader.__len__()):
             history['loss']['train'].append(total_loss / data_cnt)
             history['positive_similarity']['train'].append(total_positive_similarity / data_cnt)
             history['negative_similarity']['train'].append(total_negative_similarity / data_cnt)
+            history['positive_euclidean_distance']['train'].append(total_positive_euclidean_distance / data_cnt)
+            history['negative_euclidean_distance']['train'].append(total_negative_euclidean_distance / data_cnt)
             
-            val_loss, avg_pos_sim, avg_neg_sim = evaluate(model, tokenizer, history, loss_fn, val_dataloader, epoch_idx)
+            val_loss, avg_pos_sim, avg_neg_sim, avg_pos_euc_dist, avg_neg_euc_dist = evaluate(model, tokenizer, history, loss_fn, val_dataloader, epoch_idx)
             history['loss']['eval'].append(val_loss)
             history['positive_similarity']['eval'].append(avg_pos_sim)
             history['negative_similarity']['eval'].append(avg_neg_sim)
+            history['positive_euclidean_distance']['eval'].append(avg_pos_euc_dist)
+            history['negative_euclidean_distance']['eval'].append(avg_neg_euc_dist)
             
             save_history(history)
-            logging.info(f'[epoch {epoch_idx} - batch {batch_idx} - val] loss: {val_loss} positive similarity: {avg_pos_sim}  negative similarity: {avg_neg_sim}')
+            logging.info(f'[epoch {epoch_idx} - batch {batch_idx} - val] loss: {val_loss} positive similarity: {avg_pos_sim}  negative similarity: {avg_neg_sim} positive euclidean distance: {avg_pos_euc_dist} negative euclidean distance: {avg_neg_euc_dist}')
             
             # Save if no previous history, or if new result is better than previous
             if len(history['loss']['eval']) == 0 or val_loss <= min(history['loss']['eval'][:-1], default=val_loss):
@@ -134,8 +148,8 @@ def evaluate(model, tokenizer, history, loss_fn, dataloader, epoch):
     
     model.eval()
     logging.info('Evaluating...')
-    total_loss, total_positive_similarity, total_negative_similarity, data_cnt = 0, 0, 0, 0
     
+    total_loss, total_positive_similarity, total_negative_similarity, total_positive_euclidean_distance, total_negative_euclidean_distance, data_cnt = 0, 0, 0, 0, 0, 0
     with torch.no_grad():
         for batch_idx, (anchor, positive, negative) in tqdm(enumerate(dataloader, 1), desc="Evaluating", total=dataloader.__len__(), disable=False):
             
@@ -176,12 +190,20 @@ def evaluate(model, tokenizer, history, loss_fn, dataloader, epoch):
                                                                       positive_rep.detach().to('cpu').numpy()))
             negative_cosine_similarity = 1 - (paired_cosine_distances(anchor_rep.detach().to('cpu').numpy(),
                                                                       negative_rep.detach().to('cpu').numpy()))
+            
+            positive_euclidean_distance = euclidean_distances(anchor_rep.detach().to('cpu').numpy(),
+                                                                  positive_rep.detach().to('cpu').numpy())
+            negative_euclidean_distance = euclidean_distances(anchor_rep.detach().to('cpu').numpy(),
+                                                                  negative_rep.detach().to('cpu').numpy())
+        
             data_cnt += batch_count
             total_loss += loss.item() * batch_count
             total_positive_similarity += np.sum(positive_cosine_similarity)
             total_negative_similarity += np.sum(negative_cosine_similarity)
+            total_positive_euclidean_distance += np.sum(positive_euclidean_distance)
+            total_negative_euclidean_distance += np.sum(negative_euclidean_distance)
 
-    return total_loss / data_cnt, total_positive_similarity / data_cnt, total_negative_similarity / data_cnt
+    return total_loss / data_cnt, total_positive_similarity / data_cnt, total_negative_similarity / data_cnt, total_positive_euclidean_distance / data_cnt, total_negative_euclidean_distance / data_cnt
 
 def save_history(history):
     for metric, data in history.items():
