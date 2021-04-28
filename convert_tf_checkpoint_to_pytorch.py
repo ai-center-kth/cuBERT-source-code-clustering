@@ -1,11 +1,12 @@
 import config
+import argparse
 from transformers import BertForPreTraining, BertConfig
 
-def convert_tf_checkpoint_to_pytorch(tf_checkpoint_path, bert_config_file, output_path):
+def convert_tf_checkpoint_to_pytorch(tf_checkpoint_path, bert_config_file, pytorch_dump_path):
     print("Converting weights...")
     model_config = BertConfig.from_json_file(bert_config_file)
     model = BertForPreTraining.from_pretrained(pretrained_model_name_or_path=tf_checkpoint_path, from_tf=True, config=model_config)
-    model.save_pretrained(output_path)
+    model.save_pretrained(pytorch_dump_path)
     print("Done.")
 
 
