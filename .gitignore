@@ -128,7 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-model/checkpoints/*.ckpt
-model/pretrained/
-results/
-logs/
+src/data/large
+src/model/checkpoints/*.ckpt
+src/model/pre_trained/
+src/logs/
+src/results/

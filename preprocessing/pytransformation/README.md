@@ -1,1 +1,0 @@
-# Thanks to https://github.com/Dyfox100/pytransformation

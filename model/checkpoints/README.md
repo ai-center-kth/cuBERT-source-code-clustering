@@ -1,1 +1,0 @@
-# Model checkpoints goes here
