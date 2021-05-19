@@ -32,7 +32,7 @@ def extract():
     tokenizer = CuBertHugTokenizer(config.MODEL_VOCAB)
 
     # Configure data loaders
-    test_ds = TripletDataset('./data/test.json', tokenizer)
+    test_ds = TripletDataset(f'{config.DATASET_DIR}/test.json', tokenizer)
     test_dataloader = torch.utils.data.DataLoader(test_ds, collate_fn=data_collator, batch_size = 1, num_workers = 2)
 
     # Set loss function
@@ -40,7 +40,7 @@ def extract():
 
 
     total_loss, total_positive_similarity, total_negative_similarity, total_positive_euclidean_distance, total_negative_euclidean_distance, data_cnt = 0, 0, 0, 0, 0, 0
-    with open('./results/features.json', 'w') as writer:
+    with open(f'{config.LOG_DIR}/features.json', 'w') as writer:
         with torch.no_grad():
             for batch_idx, batch in tqdm(enumerate(test_dataloader, 1), desc="Evaluating", total=test_dataloader.__len__()):
 
