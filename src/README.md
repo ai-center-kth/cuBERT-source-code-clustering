@@ -56,3 +56,7 @@ Extract the fine-tuned features for the samples in the test set, saving the resu
 ```
 python extract_features.py
 ```
+
+```
+jupyter notebook --ip=0.0.0.0 --no-browser --allow-root &
+```

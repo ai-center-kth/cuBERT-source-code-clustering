@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-We provide a docker image for easy deployment of the container in order to get up and running quickly. However, if you would like to skip this step then you can head over directly to the src-folder and follow the instructions [here](/src/README.md).
+We provide a docker image for easy deployment of the container in order to get up and running quickly. However, if you would like to skip this step then you can head over directly to the src-folder and follow the instructions [here](/src).
 
 ### Docker
 #### Prerequisites
@@ -19,9 +19,9 @@ docker build -t scc .
 
 Start the container, exposing the GPUs and open a terminal prompt.
 ```
-docker run -it --gpus all scc /bin/bash
+docker run -it -p 8888:8888 --gpus all scc /bin/bash
 ```
 
 The container is now up and running with all the necessary dependencies installed.
-Instructions for running the code are available [here](/src/README.md)
+Instructions for running the code are available [here](/src)
 
