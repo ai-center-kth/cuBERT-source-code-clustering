@@ -1,7 +1,9 @@
 # Use nvidia/cuda image as base
-# Tag this image as "scc-base"
 FROM nvidia/cuda:10.2-base
 CMD nvidia-smi
+
+# Set working directory
+WORKDIR /home/root/src
 
 # Install necessary dependencies
 RUN apt update && apt install -y --no-install-recommends \
@@ -11,35 +13,19 @@ RUN apt update && apt install -y --no-install-recommends \
     python3-pip \
     python3-setuptools
 
-# Upgrade pip
-RUN pip3 -q install pip --upgrade
-
-# Use the base image by its name and install python packages
-RUN pip3 install torch \
-    transformers \
-    tensorflow-gpu \
-    tensor2tensor \
-    nltk \
-    numpy \
-    pandas \
-    sklearn \
-    matplotlib \
-    seaborn \
-    tqdm \
-    astunparse \
-    python_minifier \
-    yapf \
-    gsutil
-
-# Set python3 as default
+# Set python3 as the default version
 RUN ln -s /usr/bin/pip3 /usr/bin/pip
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-# Set working directory
-WORKDIR /home/scc/src
+# Upgrade pip
+RUN pip3 -q install pip --upgrade
+
+# Copy requirements.txt and install the python packages
+COPY src/requirements.txt /home/root/src
+RUN pip3 install -r /home/root/src/requirements.txt
 
 # Copy code to working directory
-COPY src /home/scc/src
+COPY src /home/root/src
 
 # Make directory for the pre-trained model
-RUN mkdir /home/scc/src/model/tf_weights
+RUN mkdir /home/root/src/model/tf_weights
