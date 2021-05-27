@@ -1,7 +1,9 @@
+#
 # Thanks to DNGRos for this huggingface/transformers compatible version
 # https://github.com/google-research/google-research/issues/582
 #
 import os
+import torch
 import config
 import collections
 from typing import *
@@ -35,16 +37,7 @@ def flatten_list(t):
 
 
 class CuBertHugTokenizer(BertTokenizer):
-    """
-    A hacky solution that extends the cuBERT tokenizer
-    to the BertTokenizer from transformers.
-
-    Args:
-        BertTokenizer ([type]): The BertTokenizer class from transformers
-
-    Returns:
-        [CuBertHugTokenizer]: A transformers compatible cuBERT tokenizer
-    """    
+    # A hacky version that seems to work at least for python
     def __init__(
         self,
         vocab_file: str,
@@ -81,6 +74,35 @@ class CuBertHugTokenizer(BertTokenizer):
             max_length=config.MAX_SEQUENCE_LENGTH
         )
 
+    def mask_tokens(self, inputs: dict, mlm_probability=0.1):
+        """
+        Prepare masked tokens inputs/labels for masked language modeling: 10% MASK.
+        """
+        for k,v in inputs.items():
+            inputs[k] = torch.tensor(v)
+        
+        labels = inputs['input_ids']
+        labels = labels.clone().detach()
+        
+        # We sample a few tokens in each sequence for MLM training (with probability `self.mlm_probability`)
+        assert 1-mlm_probability >= 0
+        # 10% of the time (given by mlm_probability), we replace input tokens with tokenizer.mask_token ([MASK_])
+        probability_matrix = torch.full(labels.shape, 1-mlm_probability)
+        
+        special_tokens_mask = self.get_special_tokens_mask(labels.tolist(), already_has_special_tokens=True) # Avoid masking special tokens
+        special_tokens_mask = torch.tensor(special_tokens_mask, dtype=torch.bool)
+        
+        probability_matrix.masked_fill_(special_tokens_mask, value=0.0)
+        masked_indices = torch.bernoulli(probability_matrix).bool()
+        indices_replaced = torch.bernoulli(torch.full(labels.shape, mlm_probability)).bool() & masked_indices
+        
+        # Set token ID to -100 for the tokens to ignore when computing MLM loss
+        # See https://huggingface.co/transformers/_modules/transformers/models/bert/modeling_bert.html#BertForMaskedLM
+        labels[~indices_replaced] = -100   
+        inputs['input_ids'][indices_replaced] = self.convert_tokens_to_ids(self.mask_token)
+        inputs['labels'] = labels
+        return inputs
+    
     @property
     def do_lower_case(self):
         return False

@@ -12,13 +12,18 @@ If you did not use Docker, then you need to first activate your virtual environm
 pip install -r requirements.txt
 ```
 
-# Create a dataset
+## Dataset
+To fine-tune the model, we require a dataset. For this there are two options, either create one of your own or download a dataset that we have made publicly available.
+
+### Create a dataset
 Create a dataset by running
 ```
 python preprocessing/preprocess.py --directory <path/to/folder/containing/all/source/code>
 ```
 The `--directory` flag should point to the directory that contains all of the .py-files to extract methods from.
-Alternatively, we make a preprocessed dataset available [here]()
+
+### Download a preprocessed dataset
+We provide both a small and large preprocessed dataset publicly available [here](https://www.dropbox.com/sh/1suwjvbtko9omrb/AADsjSx9gwk9jKJiisXO57Kva?dl=0)
 
 # Download the pre-trained cuBERT weights
 Run the following command, or download the weights from [google-research/cubert](https://github.com/google-research/google-research/tree/master/cubert).
@@ -48,15 +53,20 @@ Update the `config.py` files with the paths and hyperparameters according to you
 
 Fine-tune cuBERT by running
 ```
-python train.py
+python train.py -f <FRAMEWORK>
 ```
 
-# Feature extraction
-Extract the fine-tuned features for the samples in the test set, saving the results to a .json file.
-```
-python extract_features.py
-```
+Where the valid options for framework are:
+- Triplet
+- DRC
+- Unsupervised
+
+# Evaluation
+If cuBERT was fine-tuned with the Triplet Framework then we need to run the cluster analysis on the extracted features and visualize the results.
+To do so, start the `evaluation.ipynb` notebook using the following command:
 
 ```
-jupyter notebook --ip=0.0.0.0 --no-browser --allow-root &
+jupyter notebook evaluation.ipynb --ip=0.0.0.0 --no-browser --allow-root &
 ```
+
+If cuBERT was fine-tuned with either the Deep Robust Clustering framework or the unsupervised framework, then the cluster metrics and visualization will be found directly in the log directory.

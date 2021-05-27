@@ -4,10 +4,8 @@ import torch
 import config
 import logging
 import numpy as np
-import matplotlib.pyplot as plt
 
 from tqdm import tqdm
-from matplotlib import ticker
 from torch.cuda.amp import autocast
 from dataset import TripletDataset, data_collator
 from transformers import BertModel, BertConfig
@@ -42,7 +40,7 @@ def extract():
     total_loss, total_positive_similarity, total_negative_similarity, total_positive_euclidean_distance, total_negative_euclidean_distance, data_cnt = 0, 0, 0, 0, 0, 0
     with open(f'{config.LOG_DIR}/features.json', 'w') as writer:
         with torch.no_grad():
-            for batch_idx, batch in tqdm(enumerate(test_dataloader, 1), desc="Evaluating", total=test_dataloader.__len__()):
+            for _, batch in tqdm(enumerate(test_dataloader, 1), desc="Evaluating", total=test_dataloader.__len__()):
 
                 batch_count = np.shape(batch['anchor']['method_name'])[0]
                 with autocast():
