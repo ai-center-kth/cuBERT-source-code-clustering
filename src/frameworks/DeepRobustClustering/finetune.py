@@ -1,3 +1,4 @@
+import os
 import torch
 import config
 import logging
@@ -22,6 +23,9 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 def drc_finetune():
+
+    # Create log directory
+    os.makedirs(config.LOG_DIR, exist_ok=True)
 
     # Load pretrained model
     model_config = BertConfig.from_json_file(config.MODEL_CONFIG)
@@ -157,7 +161,7 @@ def train_epoch(model, scaler, optimizer, scheduler, loss_fn,
         torch.cuda.empty_cache()
 
         # Check if logging should be done
-        if ( batch_idx % config.NUM_BATCHES_TO_LOG == 0 or batch_idx == train_dataloader.__len__()):
+        if ( batch_idx % config.NUM_BATCHES_UNTIL_LOG == 0 or batch_idx == train_dataloader.__len__()):
             logging.info(
                 f"\n[epoch {epoch_idx} - batch {batch_idx} - train] loss: {total_loss / data_cnt} AF loss: {total_af_loss / data_cnt} AP loss: {total_ap_loss / data_cnt} CR loss {total_reg_loss / data_cnt} cosine similarity: {total_cosine_similarity / data_cnt} euclidean distance: {total_euclidean_distance / data_cnt}"
             )

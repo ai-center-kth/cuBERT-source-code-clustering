@@ -1,3 +1,4 @@
+import os
 import torch
 import config
 import logging
@@ -16,6 +17,9 @@ logging.getLogger().setLevel(logging.INFO)
     
 def unsupervised_finetune():
     
+    # Create log directory
+    os.makedirs(config.LOG_DIR, exist_ok=True)
+
     # Load pretrained model
     model_config = BertConfig.from_json_file(config.MODEL_CONFIG)
     model = BertForMaskedLM.from_pretrained(pretrained_model_name_or_path=config.MODEL_PATH, config=model_config).to('cuda')
@@ -107,7 +111,7 @@ def train_epoch(model, tokenizer, scaler, optimizer, scheduler, loss_fn, history
 
         torch.cuda.empty_cache()
         
-        if batch_idx % config.NUM_BATCHES_TO_LOG == 0 or batch_idx == train_dataloader.__len__():
+        if (batch_idx % config.NUM_BATCHES_UNTIL_LOG == 0 or batch_idx == train_dataloader.__len__()):
             logging.info(f'\n[epoch {epoch_idx} - batch {batch_idx} - train] loss: {total_loss / data_cnt} mlm-loss: {total_mlm_loss / data_cnt} KL-loss: {total_kl_loss / data_cnt}')
 
         if (batch_idx % config.NUM_BATCHES_UNTIL_EVAL == 0 or batch_idx == train_dataloader.__len__()):
