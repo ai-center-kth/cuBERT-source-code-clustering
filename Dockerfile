@@ -7,6 +7,7 @@ WORKDIR /home/root/src
 
 # Install necessary dependencies
 RUN apt update && apt install -y --no-install-recommends \
+    tmux \
     git \
     build-essential \
     python3-dev \
