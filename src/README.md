@@ -33,7 +33,7 @@ gsutil -m cp \
     "gs://cubert/20200621_Python/pre_trained_model__epochs_2__length_512/model.ckpt-602440.data-00000-of-00001" \
     "gs://cubert/20200621_Python/pre_trained_model__epochs_2__length_512/model.ckpt-602440.index" \
     "gs://cubert/20200621_Python/pre_trained_model__epochs_2__length_512/model.ckpt-602440.meta" \
-    /home/scc/src/model/tf_weights
+    /home/root/src/model/tf_weights
 ```
 
 Before fine-tuning cuBERT, we first need to convert the tensorflow weights into pytorch-friendly model weights.
